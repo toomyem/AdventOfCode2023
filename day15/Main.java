@@ -7,8 +7,6 @@ import java.util.regex.Pattern;
 
 record Lens(String label, int focal) {}
 
-record Op(char op, Lens lens) {}
-
 public class Main {
     public static void main(String[] args) throws Exception {
         new Main().run();
