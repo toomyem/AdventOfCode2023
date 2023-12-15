@@ -1,7 +1,8 @@
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 public class Main {
@@ -16,58 +17,104 @@ public class Main {
 
             while (in.hasNext()) {
                 String line = in.nextLine();
-                char[] row = new char[line.length()];
-                for (int i = 0; i < row.length; i++) {
-                    row[i] = line.charAt(i);
-                }
-                board.add(row);
+                board.add(line.toCharArray());
             }
 
-            int sum1 = calculate(board);
+            int sum1 = weight(north(board));
+            int sum2 = weight(calculate(board));
 
             System.out.println("Part 1: " + sum1);
-
+            System.out.println("Part 2: " + sum2);
         }
     }
 
-    boolean north(List<char[]> board) {
-        boolean moved = false;
-        for (int r = 0; r < board.size() - 1; r++) {
-            char[] row = board.get(r);
-            char[] next = board.get(r + 1);
-            for (int i = 0; i < row.length; i++) {
-                if (next[i] == 'O' && row[i] == '.') {
-                    row[i] = 'O';
-                    next[i] = '.';
-                    moved = true;
-                }
-            }
+    List<char[]> north(List<char[]> oldBoard) {
+        List<char[]> board = new ArrayList<>();
+        for (char[] row : oldBoard) {
+            board.add(row.clone());
         }
-        return moved;
-    }
 
-    int calculate(List<char[]> board) {
-        while (north(board)) ;
-
-        int sum = 0;
-        for (int r = 0; r < board.size(); r++) {
+        for (int r = 1; r < board.size(); r++) {
             char[] row = board.get(r);
             for (int c = 0; c < row.length; c++) {
                 if (row[c] == 'O') {
-                    sum += board.size() - r;
+                    int n = r;
+                    while (n > 0 && board.get(n-1)[c] == '.') {
+                        n--;
+                    }
+                    row[c] = '.';
+                    board.get(n)[c] = 'O';
+                }
+            }
+        }
+        return board;
+    }
+
+    List<char[]> turn(List<char[]> oldBoard) {
+        List<char[]> board = new ArrayList<>();
+        int rows = oldBoard.size();
+        int cols = oldBoard.get(0).length;
+
+        for (int c = 0; c < cols; c++) {
+            char[] row = new char[rows];
+            for (int r = rows - 1; r >= 0; r--) {
+                row[rows - r - 1] = oldBoard.get(r)[c];
+            }
+            board.add(row);
+        }
+        return board;
+    }
+
+    private final Map<String, Integer> memo = new HashMap<>();
+    private final Map<Integer, List<char[]>> step = new HashMap<>();
+
+    String getKey(List<char[]> board) {
+        StringBuilder sb = new StringBuilder();
+        for (char[] row : board) {
+            sb.append(new String(row));
+            sb.append("\n");
+        }
+        return sb.toString();
+    }
+
+    List<char[]> cycle(List<char[]> board) {
+        for (int i = 0; i < 4; i++) {
+            board = turn(north(board));
+        }
+        return board;
+    }
+
+    List<char[]> calculate(List<char[]> board) {
+        int i = 0;
+        int s = 0;
+        while (i < 1000000000) {
+            String key = getKey(board);
+            s = memo.getOrDefault(key, 0);
+            if (s != 0) {
+                break;
+            }
+            memo.putIfAbsent(key, i);
+            step.put(i, board);
+            board = cycle(board);
+            i += 1;
+        }
+        int r = (1000000000 - s) % (i - s) + s;
+        board = step.get(r);
+
+        return board;
+    }
+
+    int weight(List<char[]> board) {
+        int sum = 0;
+        int rows = board.size();
+        for (int r = 0; r < rows; r++) {
+            char[] row = board.get(r);
+            for (int c = 0; c < row.length; c++) {
+                if (row[c] == 'O') {
+                    sum += rows - r;
                 }
             }
         }
         return sum;
-    }
-
-    private void printBoard(List<char[]> board) {
-        for (char[] row : board) {
-            String line = "";
-            for (int i = 0; i < row.length; i++) {
-                line += row[i];
-            }
-            System.out.println(line);
-        }
     }
 }
