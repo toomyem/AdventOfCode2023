@@ -181,30 +181,22 @@ public class Main {
             presses += 1;
         }
 
-        return lcd(periods);
+        return lcm(periods);
     }
 
-    public long lcd(List<Long> periods) {
-        long nww = periods.get(0);
-
-        for (int i = 1; i < periods.size(); i++) {
-            nww = lcd(nww, periods.get(i));
+    long gcd(long n1, long n2) {
+        if (n2 == 0) {
+            return n1;
         }
-
-        return nww;
+        return gcd(n2, n1 % n2);
     }
 
-    public long lcd(long a, long b) {
-        return (a * b) / gcd(a, b);
+    long lcm(long n1, long n2) {
+        return (n1 / gcd(n1, n2)) * n2;
     }
 
-    public long gcd(long a, long b) {
-        while (b != 0) {
-            long temp = b;
-            b = a % b;
-            a = temp;
-        }
-        return a;
+    long lcm(List<Long> values) {
+        return values.stream().mapToLong(i -> i).reduce(1L, this::lcm);
     }
 
     void saveGraph(Map<String, Module> circuit) {
