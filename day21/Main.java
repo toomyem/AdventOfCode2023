@@ -1,9 +1,7 @@
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 
@@ -26,29 +24,11 @@ record Pos(int row, int col) {
     public String toString() {
         return "(" + row + "," + col + ")";
     }
-
-    boolean outside(Box box) {
-        return row < box.top() || row > box.bottom() || col < box.left() || col > box.right();
-    }
 }
 
-record Key(boolean even, int step) {}
-
-record Box(Pos center, int size) {
-    int left() {
-        return center.col() - size;
-    }
-
-    int right() {
-        return center.col() + size;
-    }
-
-    int top() {
-        return center.row() - size;
-    }
-
-    int bottom() {
-        return center.row() + size;
+record Box(int left, int right, int top, int bottom) {
+    public boolean contains(Pos p) {
+        return p.col() >= left && p.col() <= right && p.row() >= top && p.row() <= bottom;
     }
 }
 
@@ -117,82 +97,68 @@ public class Main {
     }
 
     private long solve2(Set<Pos> garden, Pos start, int rows, int cols) {
-        Map<Key, Long> cache = new HashMap<>();
         List<Pos> queue = new ArrayList<>();
         Set<Pos> set = new HashSet<>();
         Pos marker = new Pos(-1, -1);
-        queue.add(marker);
         queue.add(start);
-        //queue.add(marker);
+        queue.add(marker);
         set.add(start);
-        int step = 0;
-        long sum = 0;
+        int steps = rows * 2 + rows / 2;
 
-        while (step < 26501365 && !queue.isEmpty()) {
+        while (steps > 0 && !queue.isEmpty()) {
             Pos pos = queue.remove(0);
             set.remove(pos);
             if (pos == marker) {
-                Key key = new Key(step % 2 == 0, step);
-                long i = inside(set, new Box(start, step));
-                cache.put(key, i);
-                printGarden(garden, rows, cols, queue);
-                step += 1;
-                System.out.println("Steps: " + step + ", size: " + queue.size());
-                //print(queue, start);
+                steps -= 1;
+                System.out.println("Steps: " + steps + ", size: " + queue.size());
                 queue.add(marker);
                 continue;
             }
-            Box box = new Box(start, step-2);
             for (Dir dir : Dir.values()) {
                 Pos p2 = pos.go(dir);
                 Pos p3 = new Pos(wrap(p2.row(), rows), wrap(p2.col(), cols));
-                if (p3.outside(box) && !garden.contains(p3) && !set.contains(p2)) {
+                if (!garden.contains(p3) && !set.contains(p2)) {
                     queue.add(p2);
                     set.add(p2);
                 }
             }
         }
 
-        return sum;
-    }
-
-    long inside(Set<Pos> set, Box box) {
-        return set.stream().filter(p -> !p.outside(box)).count();
-    }
-
-    private void print(List<Pos> queue, Pos start) {
-        for (int size = 1; size < 10; size++) {
-            int sum = 0;
-            for (int row = start.row() - size; row <= start.row() + size; row++) {
-                for (int col = start.col() - size; col <= start.col() + size; col++) {
-                    if (queue.contains(new Pos(row, col))) {
-                        sum += 1;
-                    }
-                }
+        List<Long> partials = new ArrayList<>();
+        for (int row = -2 * rows; row < 3 * rows; row += rows) {
+            for (int col = -2 * cols; col < 3 * cols; col += cols) {
+                Box box = new Box(col, col + cols - 1, row, row + rows - 1);
+                long sum = set.stream().filter(box::contains).count();
+                partials.add(sum);
+                System.out.format("%5d ", sum);
             }
-            System.out.println("Size: " + size + ", sum: " + sum);
+            System.out.println();
         }
+
+        steps = 26501365;
+        long horiz = (steps * 2 + 1) / rows;
+        long diag = (horiz + 1) / 2;
+        long sizeA = (diag - 1) * (diag - 1);
+        long sizeB = (diag - 2) * (diag - 2);
+        long sizeC = diag - 1;
+        long sizeD = diag - 2;
+        long sum = 0;
+        long[] coef = new long[]{
+                0L,    sizeC, 1L,    sizeC, 0L,
+                0L,    sizeD, sizeA, sizeD, 0L,
+                1L,    0L,    sizeB, 0L,    1L,
+                sizeC, sizeD, 0L,    sizeD, sizeC,
+                0L,    0L,    1L,    0L,    0L
+        };
+        for (int i = 0; i < coef.length; i++) {
+            sum += coef[i] * partials.get(i);
+        }
+        return sum;
     }
 
     int wrap(int i, int m) {
         int j = i % m;
         if (j < 0) j += m;
         return j;
-    }
-
-    private void printGarden(Set<Pos> garden, int rows, int cols, List<Pos> queue) {
-        System.out.println("\nGarden:");
-        for (int row = 0; row < rows; row++) {
-            String line = "";
-            for (int col = 0; col < cols; col++) {
-                Pos pos = new Pos(row, col);
-                char ch = garden.contains(pos) ? '#' : '.';
-                if (queue.contains(pos)) {
-                    ch = 'O';
-                }
-                line += ch;
-            }
-            System.out.println(line);
-        }
     }
 }
