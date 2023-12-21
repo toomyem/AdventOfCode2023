@@ -1,7 +1,9 @@
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 
@@ -23,6 +25,30 @@ record Pos(int row, int col) {
     @Override
     public String toString() {
         return "(" + row + "," + col + ")";
+    }
+
+    boolean outside(Box box) {
+        return row < box.top() || row > box.bottom() || col < box.left() || col > box.right();
+    }
+}
+
+record Key(boolean even, int step) {}
+
+record Box(Pos center, int size) {
+    int left() {
+        return center.col() - size;
+    }
+
+    int right() {
+        return center.col() + size;
+    }
+
+    int top() {
+        return center.row() - size;
+    }
+
+    int bottom() {
+        return center.row() + size;
     }
 }
 
@@ -57,7 +83,7 @@ public class Main {
             int sum1 = solve1(garden, start, row, col);
             System.out.println("Part 1: " + sum1);
 
-            int sum2 = solve2(garden, start, row, col);
+            long sum2 = solve2(garden, start, row, col);
             System.out.println("Part 2: " + sum2);
         }
     }
@@ -90,37 +116,62 @@ public class Main {
         return visited.size() - 1;
     }
 
-    private int solve2(Set<Pos> garden, Pos start, int rows, int cols) {
+    private long solve2(Set<Pos> garden, Pos start, int rows, int cols) {
+        Map<Key, Long> cache = new HashMap<>();
         List<Pos> queue = new ArrayList<>();
         Set<Pos> set = new HashSet<>();
         Pos marker = new Pos(-1, -1);
-        queue.add(start);
         queue.add(marker);
+        queue.add(start);
+        //queue.add(marker);
         set.add(start);
-        int steps = 0;
+        int step = 0;
+        long sum = 0;
 
-        while (steps < 26501365 && !queue.isEmpty()) {
+        while (step < 26501365 && !queue.isEmpty()) {
             Pos pos = queue.remove(0);
             set.remove(pos);
             if (pos == marker) {
-                steps += 1;
-                //printGarden(garden, rows, cols, queue);
-                System.out.println("Steps: " + steps + ", size: " + queue.size());// + ", queue: " + queue);
+                Key key = new Key(step % 2 == 0, step);
+                long i = inside(set, new Box(start, step));
+                cache.put(key, i);
+                printGarden(garden, rows, cols, queue);
+                step += 1;
+                System.out.println("Steps: " + step + ", size: " + queue.size());
+                //print(queue, start);
                 queue.add(marker);
                 continue;
             }
+            Box box = new Box(start, step-2);
             for (Dir dir : Dir.values()) {
                 Pos p2 = pos.go(dir);
                 Pos p3 = new Pos(wrap(p2.row(), rows), wrap(p2.col(), cols));
-                if (!garden.contains(p3) && !set.contains(p2)) {
+                if (p3.outside(box) && !garden.contains(p3) && !set.contains(p2)) {
                     queue.add(p2);
                     set.add(p2);
                 }
             }
         }
 
-        Set<Pos> visited = new HashSet<>(queue);
-        return visited.size() - 1;
+        return sum;
+    }
+
+    long inside(Set<Pos> set, Box box) {
+        return set.stream().filter(p -> !p.outside(box)).count();
+    }
+
+    private void print(List<Pos> queue, Pos start) {
+        for (int size = 1; size < 10; size++) {
+            int sum = 0;
+            for (int row = start.row() - size; row <= start.row() + size; row++) {
+                for (int col = start.col() - size; col <= start.col() + size; col++) {
+                    if (queue.contains(new Pos(row, col))) {
+                        sum += 1;
+                    }
+                }
+            }
+            System.out.println("Size: " + size + ", sum: " + sum);
+        }
     }
 
     int wrap(int i, int m) {
