@@ -26,6 +26,13 @@ record Pos(int row, int col) {
     }
 }
 
+record Box(int left, int right, int top, int bottom) {
+
+    public boolean contains(Pos p) {
+        return p.col() >= left && p.col() <= right && p.row() >= top && p.row() <= bottom;
+    }
+}
+
 public class Main {
     public static void main(String[] args) throws Exception {
         String file = args.length > 0 ? args[0] : "input.txt";
@@ -99,7 +106,7 @@ public class Main {
         set.add(start);
         int steps = 0;
 
-        while (steps < 26501365 && !queue.isEmpty()) {
+        while (steps < 131*2+65 && !queue.isEmpty()) {
             Pos pos = queue.remove(0);
             set.remove(pos);
             if (pos == marker) {
@@ -119,8 +126,20 @@ public class Main {
             }
         }
 
-        Set<Pos> visited = new HashSet<>(queue);
-        return visited.size() - 1;
+        System.out.println("Steps: " + steps);
+
+        long total = 0;
+        for (int row = -2*131; row < 3*131; row += 131) {
+            for (int col = -2*131; col < 3*131; col += 131) {
+                Box box = new Box(col, col + 130, row, row + 130);
+                long sum = set.stream().filter(box::contains).count();
+                total += sum;
+                System.out.format("%8d ", sum);
+            }
+            System.out.println();
+        }
+        System.out.println("total: " + total);
+        return set.size();
     }
 
     int wrap(int i, int m) {
