@@ -1,8 +1,10 @@
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Set;
 
 record Pos(int x, int y) {
     @Override
@@ -10,6 +12,7 @@ record Pos(int x, int y) {
         return "(" + x + "," + y + ")";
     }
 }
+
 record Plane(Pos p1, Pos p2) {
 
     boolean overlaps(Plane p) {
@@ -91,6 +94,9 @@ public class Main {
 
             int sum1 = solve1(boxes);
             System.out.println("Part 1: " + sum1);
+
+            int sum2 = solve2(boxes);
+            System.out.println("Part 2: " + sum2);
         }
     }
 
@@ -117,11 +123,41 @@ public class Main {
         return toRemove.size();
     }
 
-    boolean canBeRemoved(Box box) {
-        for(Box b : box.supports) {
-            long i = b.laysOn.stream().filter(b2 -> b2 != box).count();
-            if (i == 0) return false;
+    int solve2(List<Box> boxes) {
+        List<Box> queue = new ArrayList<>();
+        int sum = 0;
+
+        for (Box box : boxes) {
+            queue.add(box);
+            Set<Box> removed = new HashSet<>();
+            while (!queue.isEmpty()) {
+                box = queue.remove(0);
+                removed.add(box);
+                Set<Box> willFall = whatWillFall(box, removed);
+                sum += willFall.size();
+                queue.addAll(willFall);
+            }
         }
-        return true;
+
+        return sum;
+    }
+
+    boolean canBeRemoved(Box box) {
+        return whatWillFall(box).isEmpty();
+    }
+
+    Set<Box> whatWillFall(Box box) {
+        return whatWillFall(box, Set.of());
+    }
+    
+    Set<Box> whatWillFall(Box box, Set<Box> removed) {
+        Set<Box> result = new HashSet<>();
+        for (Box b : box.supports) {
+            long i = b.laysOn.stream().filter(b2 -> b2 != box && !removed.contains(b2)).count();
+            if (i == 0) {
+                result.add(b);
+            }
+        }
+        return result;
     }
 }
