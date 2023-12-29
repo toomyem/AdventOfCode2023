@@ -2,6 +2,8 @@
 
 set -e
 
-javac Main.java
-java -cp . Main
+libs=../libs/guava-33.0.0-jre.jar
+
+javac -cp $libs Main.java
+java -cp $libs:. Main
 

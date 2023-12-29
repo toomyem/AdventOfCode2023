@@ -7,6 +7,7 @@ import com.google.common.graph.ValueGraphBuilder;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -28,12 +29,7 @@ class Node {
     }
 }
 
-record Cut(int edges, int a, int b) {
-    @Override
-    public String toString() {
-        return edges + "/" + a + "," + b;
-    }
-}
+record Cut(Node s, Node t, int weight) {}
 
 @SuppressWarnings("UnstableApiUsage")
 public class Main {
@@ -67,46 +63,80 @@ public class Main {
         }
     }
 
-    int solve1(ValueGraph<Node, Integer> graph) {
-        Cut cut;
-        int i = 0;
-        do {
-            cut = collapse(graph);
-            System.out.print(cut + (++i % 15 == 0 ? "\n" : " "));
-        } while (cut.edges() != 3);
-        return cut.a() * cut.b();
+    int solve1(MutableValueGraph<Node, Integer> graph) {
+        ValueGraph<Node, Integer> original = Graphs.copyOf(graph);
+        Set<Node> partition = new HashSet<>();
+        Set<Node> bestPartition = null;
+        Cut bestCut = null;
+        while (graph.nodes().size() > 1) {
+            Cut cut = computeCut(graph);
+            partition.add(cut.t());
+            if (bestCut == null || cut.weight() < bestCut.weight()) {
+                bestCut = cut;
+                bestPartition = new HashSet<>(partition);
+            }
+            System.out.println(graph.nodes().size() + ": " + bestCut + "   " + cut + "   " + partition.size());
+            mergeNodes(graph, cut);
+        }
+        return buildMinCut(original, bestPartition);
     }
 
-    Cut collapse(ValueGraph<Node, Integer> graph) {
-        while (graph.nodes().size() > 2) {
-            List<EndpointPair<Node>> edges = new ArrayList<>(graph.edges());
-            EndpointPair<Node> edge = edges.get(rnd.nextInt(edges.size()));
-            graph = collapse(graph, edge);
+    Cut computeCut(ValueGraph<Node, Integer> graph) {
+        Node start = graph.nodes().iterator().next();
+        Set<Node> candidates = new HashSet<>(graph.nodes());
+        candidates.remove(start);
+        List<Node> list = new ArrayList<>(List.of(start));
+        int weight = 0;
+
+        while (!candidates.isEmpty()) {
+            int maxWeight = 0;
+            Node maxNode = null;
+            for (Node next : candidates) {
+                int sum = 0;
+                for (Node node : list) {
+                    int v = graph.edgeValue(next, node).orElse(0);
+                    sum += v;
+                }
+                if (sum > maxWeight) {
+                    maxWeight = sum;
+                    maxNode = next;
+                }
+            }
+            candidates.remove(maxNode);
+            list.add(maxNode);
+            maxNode.value = maxWeight;
+            weight = maxWeight;
         }
-        EndpointPair<Node> edge = graph.edges().iterator().next();
-        return new Cut(graph.edgeValue(edge).orElse(0), edge.nodeU().value, edge.nodeV().value);
+
+        Node s = list.get(list.size() - 2);
+        Node t = list.get(list.size() - 1);
+        return new Cut(s, t, weight);
     }
 
-    private ValueGraph<Node, Integer> collapse(ValueGraph<Node, Integer> graph, EndpointPair<Node> edge) {
-        Node nodeU = edge.nodeU();
-        Node nodeV = edge.nodeV();
-        Iterable<Node> it = graph.nodes().stream().filter(n -> n != nodeU && n != nodeV).toList();
-        MutableValueGraph<Node, Integer> g = Graphs.inducedSubgraph(graph, it);
-        Set<Node> nodes = g.nodes();
-        Node nn = new Node(nodeU.id + "," + nodeV.id, nodeU.value + nodeV.value);
-        g.addNode(nn);
-        for (EndpointPair<Node> pair : graph.incidentEdges(nodeU)) {
-            Node other = pair.adjacentNode(nodeU);
-            if (other == nodeV) continue;
-            int v = g.edgeValue(nn, other).orElse(0);
-            g.putEdgeValue(nn, other, v + graph.edgeValue(pair).orElse(0));
+    void mergeNodes(MutableValueGraph<Node, Integer> graph, Cut cut) {
+        Node s = cut.s();
+        Node t = cut.t();
+        for (EndpointPair<Node> pair : graph.incidentEdges(t)) {
+            Node other = pair.adjacentNode(t);
+            if (other == s) continue;
+            int v = graph.edgeValue(pair).get();
+            int vv = graph.edgeValue(s, other).orElse(0);
+            graph.putEdgeValue(s, other, v + vv);
         }
-        for (EndpointPair<Node> pair : graph.incidentEdges(nodeV)) {
-            Node other = pair.adjacentNode(nodeV);
-            if (other == nodeU) continue;
-            int v = g.edgeValue(nn, other).orElse(0);
-            g.putEdgeValue(nn, other, v + graph.edgeValue(pair).orElse(0));
+        graph.removeNode(t);
+    }
+
+    int buildMinCut(ValueGraph<Node, Integer> graph, Set<Node> partition) {
+        Set<Node> first = new HashSet<>();
+        Set<Node> second = new HashSet<>();
+
+        for (Node node : graph.nodes()) {
+            if (partition.contains(node)) {
+                first.add(node);
+            } else {
+                second.add(node);
+            }
         }
-        return g;
+        return first.size() * second.size();
     }
 }
