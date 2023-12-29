@@ -10,7 +10,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
 
@@ -38,7 +37,6 @@ public class Main {
         new Main().run(file);
     }
 
-    final Random rnd = new Random();
     private void run(String file) throws Exception {
         try (Scanner in = new Scanner(new File(file))) {
 
@@ -68,16 +66,20 @@ public class Main {
         Set<Node> partition = new HashSet<>();
         Set<Node> bestPartition = null;
         Cut bestCut = null;
-        while (graph.nodes().size() > 1) {
+        int size;
+        while ((size = graph.nodes().size()) > 1) {
             Cut cut = computeCut(graph);
             partition.add(cut.t());
             if (bestCut == null || cut.weight() < bestCut.weight()) {
                 bestCut = cut;
                 bestPartition = new HashSet<>(partition);
+                if (bestCut.weight() == 3) break;
             }
-            System.out.println(graph.nodes().size() + ": " + bestCut + "   " + cut + "   " + partition.size());
             mergeNodes(graph, cut);
+            System.out.print(size + (size % 20 == 0 ? "\n" : " "));
         }
+        System.out.println(bestCut);
+
         return buildMinCut(original, bestPartition);
     }
 
@@ -104,7 +106,6 @@ public class Main {
             }
             candidates.remove(maxNode);
             list.add(maxNode);
-            maxNode.value = maxWeight;
             weight = maxWeight;
         }
 
