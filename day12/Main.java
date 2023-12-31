@@ -25,7 +25,6 @@ public class Main {
             }
             System.out.println("Part 1: " + sum1);
             System.out.println("Part 2: " + sum2);
-            System.out.println("Memo size: " + memo.size());
         }
     }
 
