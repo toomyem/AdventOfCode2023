@@ -65,7 +65,6 @@ public class Main {
             c += 1;
             if (c == card.copies) {
                 sum2 += card.copies;
-                System.out.println(idx + ": " + card);
             }
             if (c >= card.copies) {
                 idx += 1;
