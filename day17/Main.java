@@ -2,7 +2,6 @@ import java.io.File;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Scanner;
@@ -38,24 +37,35 @@ class Crucible {
     final Pos pos;
     final Head head;
     final int stepsForward;
+    final int sum;
 
-    Crucible(Pos pos, Head head, int stepsForward) {
+    Crucible(Pos pos, Head head, int stepsForward, int sum) {
         this.pos = pos;
         this.head = head;
         this.stepsForward = stepsForward;
+        this.sum = sum;
     }
 
-    Crucible clone(Pos pos, Head head, int stepsForward) {
-        return new Crucible(pos, head, stepsForward);
+    Crucible clone(Pos pos, Head head, int stepsForward, int sum) {
+        return new Crucible(pos, head, stepsForward, sum);
     }
 
-    Crucible go(Dir dir) {
+    Pos go(Dir dir) {
         Head newHead = switch (dir) {
             case RIGHT -> Head.values()[(head.ordinal() + 1) % 4];
             case LEFT -> Head.values()[(head.ordinal() + 3) % 4];
             case STRAIGHT -> head;
         };
-        return clone(pos.go(newHead), newHead, dir == Dir.STRAIGHT ? stepsForward + 1 : 1);
+        return pos.go(newHead);
+    }
+
+    Crucible go(Dir dir, int heat) {
+        Head newHead = switch (dir) {
+            case RIGHT -> Head.values()[(head.ordinal() + 1) % 4];
+            case LEFT -> Head.values()[(head.ordinal() + 3) % 4];
+            case STRAIGHT -> head;
+        };
+        return clone(pos.go(newHead), newHead, dir == Dir.STRAIGHT ? stepsForward + 1 : 1, sum + heat);
     }
 
     Set<Dir> possibleDirs() {
@@ -63,6 +73,10 @@ class Crucible {
             return Set.of(Dir.STRAIGHT, Dir.RIGHT, Dir.LEFT);
         }
         return Set.of(Dir.RIGHT, Dir.LEFT);
+    }
+
+    int minSteps() {
+        return 0;
     }
 
     @Override
@@ -84,13 +98,13 @@ class Crucible {
 }
 
 class UltraCrucible extends Crucible {
-    UltraCrucible(Pos pos, Head head, int stepsForward) {
-        super(pos, head, stepsForward);
+    UltraCrucible(Pos pos, Head head, int stepsForward, int sum) {
+        super(pos, head, stepsForward, sum);
     }
 
     @Override
-    Crucible clone(Pos pos, Head head, int stepsForward) {
-        return new UltraCrucible(pos, head, stepsForward);
+    Crucible clone(Pos pos, Head head, int stepsForward, int sum) {
+        return new UltraCrucible(pos, head, stepsForward, sum);
     }
 
     @Override
@@ -105,6 +119,11 @@ class UltraCrucible extends Crucible {
             return Set.of(Dir.STRAIGHT, Dir.RIGHT, Dir.LEFT);
         }
         return Set.of(Dir.RIGHT, Dir.LEFT);
+    }
+
+    @Override
+    int minSteps() {
+        return 4;
     }
 }
 
@@ -133,43 +152,42 @@ public class Main {
             Pos start = new Pos(0, 0);
             Pos dest = new Pos(row - 1, col - 1);
 
-            int sum1 = calc(new Crucible(start, Head.EAST, 0), dest, board);
+            int sum1 = calc(new Crucible(start, Head.EAST, 0, 0), dest, board);
             System.out.println("Part 1: " + sum1);
 
-            int sum2 = calc(new UltraCrucible(start, Head.EAST, 0), dest, board);
+            int sum2 = calc(new UltraCrucible(start, Head.EAST, 0, 0), dest, board);
             System.out.println("Part 2: " + sum2);
         }
     }
 
     private int calc(Crucible start, Pos dest, Board board) {
-        Map<Crucible, Integer> cache = new HashMap<>();
-        PriorityQueue<Crucible> queue = new PriorityQueue<>(Comparator.comparingInt(c -> cache.getOrDefault(c, Integer.MAX_VALUE)));
+        PriorityQueue<Crucible> queue = new PriorityQueue<>(Comparator.comparingInt(c -> c.sum));
         Set<Crucible> visited = new HashSet<>();
-        cache.put(start, 0);
         queue.add(start);
+        int sum = 0;
 
         while (!queue.isEmpty()) {
             Crucible c = queue.remove();
+            if (c.pos.equals(dest) && c.stepsForward >= c.minSteps()) {
+                sum = c.sum;
+                break;
+            }
             visited.add(c);
-            int sum = cache.get(c);
             Set<Dir> dirs = c.possibleDirs();
             for (Dir dir : dirs) {
-                Crucible c2 = c.go(dir);
-                Pos pos2 = c2.pos;
+                Pos pos2 = c.go(dir);
                 Integer cost = board.get(pos2);
-                if (cost != null && !visited.contains(c2)) {
-                    int t = sum + cost;
-                    if (t < cache.getOrDefault(c2, Integer.MAX_VALUE)) {
-                        cache.put(c2, t);
-                    }
-                    if (!queue.contains(c2)) {
-                        queue.add(c2);
+                if (cost != null) {
+                    Crucible c2 = c.go(dir, cost);
+                    if (!visited.contains(c2)) {
+                        if (!queue.contains(c2)) {
+                            queue.add(c2);
+                        }
                     }
                 }
             }
         }
-        return cache.entrySet().stream().filter(e -> e.getKey().pos.equals(dest))
-            .mapToInt(Map.Entry::getValue).min().orElse(Integer.MAX_VALUE);
+        return sum;
     }
 
     Pos extractPos(Crucible c) {
