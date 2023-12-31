@@ -40,7 +40,7 @@ public class Main {
             }
             sum2 += power;
         }
-        System.out.println("Sum 1: " + sum1);
-        System.out.println("Sum 2: " + sum2);
+        System.out.println("Part 1: " + sum1);
+        System.out.println("Part 2: " + sum2);
     }
 }
