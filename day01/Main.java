@@ -34,6 +34,7 @@ public class Main {
                 sum += v;
                 System.out.printf("v=%d, sum=%d%n", v, sum);
             }
+            System.out.println("Part 2: " + sum);
         }
     }
 }
